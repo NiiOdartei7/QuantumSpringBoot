@@ -43,9 +43,20 @@ public class User implements UserDetails {
     @Column
     private String userAccessPolicy;
 
+    @Column
+    private Role role;
+
     @OneToMany(mappedBy = "user")
     @JsonManagedReference
     private List<Document> documents = new ArrayList<>();
+
+
+    public User(String email, String password, Role role){
+        this.email = email;
+        this.password = password;
+        this.role = role;
+
+    }
 
     public void definePolicy(){
 
@@ -55,8 +66,7 @@ public class User implements UserDetails {
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        List<SimpleGrantedAuthority> authorities = new ArrayList<>();
-        return null;
+        return List.of(new SimpleGrantedAuthority("ROLE_" + getRole()));
     }
 
     @Override

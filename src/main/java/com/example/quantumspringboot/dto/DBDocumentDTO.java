@@ -6,16 +6,18 @@ import lombok.NoArgsConstructor;
 
 import java.util.UUID;
 
-
-@AllArgsConstructor
 @NoArgsConstructor
 @Data
-public class DocumentResponseDTO {
-    private UUID id;
-    private String status;
-
-    private String url;
-
+@AllArgsConstructor
+public class DBDocumentDTO {
     private String filename;
     private byte[] content;
+    private String status;
+    private String url;
+    private UUID id;
+
+
+    public byte[] getContent() {
+        return content;
+    }
 }

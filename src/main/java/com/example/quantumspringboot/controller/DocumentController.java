@@ -1,5 +1,6 @@
 package com.example.quantumspringboot.controller;
 
+import com.cosmian.jna.covercrypt.structs.Policy;
 import com.cosmian.utils.CloudproofException;
 import com.example.quantumspringboot.dto.*;
 import com.example.quantumspringboot.service.DocumentService;
@@ -12,6 +13,9 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.util.Base64;
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -49,7 +53,34 @@ public class DocumentController {
 
     @GetMapping("/v1/document/find/{documentID}")
     public ResponseEntity<DocumentDTO> findDoc(@PathVariable UUID documentID
-                                               ){
+    ){
         return ResponseEntity.ok(service.findDocument(documentID));
     }
+
+    @GetMapping("/v1/document/public-key")
+    public ResponseEntity<Map<String, String>> publicKey(
+    ){
+        byte[] key = service.getPublicKey();
+        return ResponseEntity.ok(Map.of("key", Base64.getEncoder().encodeToString(key)));
+    }
+
+    @GetMapping("/v1/document/policy")
+    public ResponseEntity<Policy> getPolicy(
+    ){
+        return ResponseEntity.ok(service.getPolicy());
+    }
+
+    @GetMapping("/v1/document/all")
+    public ResponseEntity<List<DocumentDTO>> getAllDocuments(
+    ){
+        return ResponseEntity.ok(service.findAllDocuments());
+    }
+
+    @GetMapping("/v1/document/preview/{documentID}")
+    public ResponseEntity<List<String>> getDocImages( @PathVariable UUID documentID,
+                                                      @RequestParam UUID userID
+    ) throws Exception {
+        return ResponseEntity.ok(service.previewDecryptedDocument(documentID, userID));
+    }
+
 }

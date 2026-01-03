@@ -48,6 +48,7 @@ public class JwtService {
 
     ){
         extraClaims.put("policy", userRequestDTO.getUserAccessPolicy());
+        extraClaims.put("user_id", userRequestDTO.getId());
         return Jwts.builder()
                 .claims(extraClaims)
                 .subject(userRequestDTO.getEmail())
@@ -72,7 +73,7 @@ public class JwtService {
 
     private Claims extractAllClaims(String token) {
         return Jwts.parser()
-                .verifyWith(getSignInKey())   // NEW: replaces setSigningKey(...)
+                .verifyWith(getSignInKey())
                 .build()
                 .parseSignedClaims(token)
                 .getPayload();

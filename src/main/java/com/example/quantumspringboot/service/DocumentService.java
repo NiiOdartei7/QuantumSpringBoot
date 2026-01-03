@@ -9,30 +9,33 @@ import com.cosmian.rest.kmip.objects.PublicKey;
 import com.cosmian.utils.CloudproofException;
 import com.example.quantumspringboot.config.MasterKeysInfo;
 import com.example.quantumspringboot.config.NativeMasterKeys;
-import com.example.quantumspringboot.dto.DocumentDTO;
-import com.example.quantumspringboot.dto.DocumentResponseDTO;
-import com.example.quantumspringboot.dto.UserResponseDTO;
+import com.example.quantumspringboot.dto.*;
+import com.example.quantumspringboot.entity.Department;
 import com.example.quantumspringboot.entity.Document;
 import com.example.quantumspringboot.entity.SecurePolicy;
 import com.example.quantumspringboot.entity.User;
+import com.example.quantumspringboot.exceptions.AttributeMismatch;
 import com.example.quantumspringboot.exceptions.EntityAlreadyExistsException;
 import com.example.quantumspringboot.exceptions.EntityDoesNotExistException;
 import com.example.quantumspringboot.repository.DocumentRepository;
 import com.example.quantumspringboot.repository.UserRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
+import org.apache.pdfbox.Loader;
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.rendering.PDFRenderer;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Arrays;
-import java.util.HexFormat;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
@@ -43,10 +46,13 @@ public class DocumentService {
     private final ObjectMapper objectMapper;
     private final LocalStorageService localStorageService;
     private final NativeMasterKeys nativeMasterKeys;
+    private final S3Service S3service;
 
     @Value("${file.upload-dir}")
     private String uploadDiriector;
 
+    @Value("${storage.type}")
+    private String storageType;
 
     public DocumentDTO findDocument(UUID id) throws EntityDoesNotExistException {
         if(documentRepository.existsDocumentById(id)){
@@ -56,64 +62,121 @@ public class DocumentService {
         throw new EntityDoesNotExistException("Document does not exist");
     }
 
+    public List<DocumentDTO> findAllDocuments() throws EntityDoesNotExistException {
+        List<Document> documents = documentRepository.findAll();
+        List<DocumentDTO> documentDTOs = new ArrayList<>();
+        for(Document document: documents){
+            DocumentDTO documentDTO = objectMapper.convertValue(document, DocumentDTO.class);
+            documentDTOs.add(documentDTO);
+
+        }
+
+        return documentDTOs;
+    }
+
+
     public DocumentDTO uploadDocument(MultipartFile file, String filename,
                                       UUID userId, String encryptionPolicy ) throws EntityAlreadyExistsException, IOException, CloudproofException {
         if(documentRepository.existsDocumentByFilename(filename)){
             throw new EntityAlreadyExistsException("A document with that name exists");
         }
 
-        byte[] publicKey = nativeMasterKeys.masterKeys().getPublicKey();
 
         UserResponseDTO user = userService.findUserById(userId);
         objectMapper.convertValue(user, User.class);
         byte[] pdfBytes = file.getBytes();
-        byte[] protectedMkgCT = CoverCrypt.encrypt(nativeMasterKeys.policy(),
-                publicKey, encryptionPolicy,
-                pdfBytes,
-                Optional.empty(),
-                Optional.empty());
 
-        String url = localStorageService.save(protectedMkgCT, filename);
-        Document saveddoc = new Document(objectMapper.convertValue(user, User.class),url,filename);
-        documentRepository.save(saveddoc);
-        System.out.println(saveddoc.getId());
-        return objectMapper.convertValue(saveddoc, DocumentDTO.class);
+        if(Objects.equals(storageType, "local")){
+            String url = localStorageService.save(pdfBytes, filename);
+            Document saveddoc = new Document(objectMapper.convertValue(user, User.class),url,filename);
+            documentRepository.save(saveddoc);
+            System.out.println(saveddoc.getId());
+            return objectMapper.convertValue(saveddoc, DocumentDTO.class);
+        }else{
+            String url = S3service.save(pdfBytes, filename);
+            Document saveddoc = new Document(objectMapper.convertValue(user, User.class),url,filename);
+            documentRepository.save(saveddoc);
+            System.out.println(saveddoc.getId());
+            return objectMapper.convertValue(saveddoc, DocumentDTO.class);
+        }
+
+//
+
     }
 
     public DocumentResponseDTO retrieveAndDecrypt(UUID documentID, UUID userID) throws EntityDoesNotExistException, CloudproofException, IOException {
-        if(documentRepository.existsDocumentById(documentID)){
-            Document document = documentRepository.findDocumentById(documentID);
+//        byte[] fileBytes =localStorageService.download(documentID);
+//        Document document = documentRepository.findDocumentById(documentID);
+        DBDocumentDTO documentDTO = localStorageService.download(documentID);
 
-            Path uploadDir = Paths.get(uploadDiriector); // "uploads"
-            Path filePath = uploadDir.resolve(document.getUrl().substring(1)); // remove leading /
-            if (!Files.exists(filePath)) {
-                throw new RuntimeException("File not found: " + filePath.toAbsolutePath());
-            }
-//            byte[] fileBytes = Files.readAllBytes(filePath);
-
-//            Path path = Paths.get(document.getUrl());
-            byte[] fileBytes = Files.readAllBytes(filePath);
             byte[] privateKey = nativeMasterKeys.masterKeys().getPrivateKey();
 
             UserResponseDTO user = userService.findUserById(userID);
             byte[] decryptionKey = CoverCrypt.generateUserPrivateKey(privateKey,
                     user.getUserAccessPolicy(),nativeMasterKeys.policy());
+            try{
+                DecryptedData protectedMkg = CoverCrypt.decrypt(decryptionKey, documentDTO.getContent(), Optional.empty());
+                return new DocumentResponseDTO(documentID, documentDTO.getStatus(), documentDTO.getUrl(),
+                        documentDTO.getStatus(), protectedMkg.getPlaintext());
+            } catch (CloudproofException e){
+                if(e.getMessage() != null && e.getMessage().contains("User decryption key has not the right policy to decrypt this input.")){
+                    throw new AttributeMismatch("You do not have the right attributes");
+                }else{
+                    throw new RuntimeException("Decryption failed due to "+ e.getMessage());
+                }
+            }
 
-            DecryptedData protectedMkg = CoverCrypt.decrypt(decryptionKey, fileBytes, Optional.empty());
-            return new DocumentResponseDTO(documentID, document.getStatus(), document.getUrl(),
-                    document.getStatus(), protectedMkg.getPlaintext());
+    }
+
+    public byte[] getPublicKey() {
+        return nativeMasterKeys.masterKeys().getPublicKey();
+    }
+
+    public Policy getPolicy() {
+        return nativeMasterKeys.policy();
+    }
+
+    public List<String> previewDecryptedDocument(UUID documentID, UUID userID) throws Exception {
+        DBDocumentDTO documentDTO;
+        if(storageType.equals("local")){
+            documentDTO = localStorageService.download(documentID);
+        }else{
+            documentDTO = S3service.download(documentID);
         }
-        throw new EntityDoesNotExistException("A document with that ID does not exist");
 
+            byte[] privateKey = nativeMasterKeys.masterKeys().getPrivateKey();
 
+            UserResponseDTO user = userService.findUserById(userID);
+            byte[] decryptionKey = CoverCrypt.generateUserPrivateKey(privateKey,
+                    user.getUserAccessPolicy(),nativeMasterKeys.policy());
+            try{
+                DecryptedData protectedMkg = CoverCrypt.decrypt(decryptionKey, documentDTO.getContent(), Optional.empty());
+                return convertPDFToImages(protectedMkg.getPlaintext());
+            } catch (CloudproofException e){
+                if(e.getMessage() != null && e.getMessage().contains("User decryption key has not the right policy to decrypt this input.")){
+                    throw new AttributeMismatch("You do not have the right attributes");
+                }else{
+                    throw new RuntimeException("Decryption failed due to "+ e.getMessage());
+                }
+            }
+        }
+
+    private List<String> convertPDFToImages(byte[] plaintext) throws IOException {
+        List<String> pages = new ArrayList<>();
+
+        try (PDDocument doc = Loader.loadPDF(plaintext)) {
+            PDFRenderer renderer = new PDFRenderer(doc);
+
+            for (int page = 0; page < doc.getNumberOfPages(); page++) {
+                BufferedImage image = renderer.renderImageWithDPI(page, 150);
+
+                ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                ImageIO.write(image, "png", baos);
+
+                String base64 = Base64.getEncoder().encodeToString(baos.toByteArray());
+                pages.add("data:image/png;base64," + base64);
+            }
+        }
+        return pages;
     }
-
-    private static String bytesToHex(byte[] bytes, int length) {
-        int len = Math.min(length, bytes.length);
-        byte[] subset = new byte[len];
-        System.arraycopy(bytes, 0, subset, 0, len);
-        return HexFormat.of().formatHex(subset);
-    }
-
-
 }

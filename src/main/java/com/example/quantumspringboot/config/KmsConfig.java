@@ -4,8 +4,6 @@ import com.cosmian.jna.covercrypt.CoverCrypt;
 import com.cosmian.jna.covercrypt.structs.MasterKeys;
 import com.cosmian.jna.covercrypt.structs.Policy;
 import com.cosmian.rest.abe.KmsClient;
-import com.cosmian.rest.kmip.objects.PrivateKey;
-import com.cosmian.rest.kmip.objects.PublicKey;
 import com.cosmian.utils.CloudproofException;
 import com.example.quantumspringboot.entity.SecurePolicy;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -29,14 +27,7 @@ public class KmsConfig {
 
 
 
-    @Bean
-    public KmsClient kmsClient() {
-        System.out.println("Using KMS API token: " + getApiToken().substring(0, 8) + "...");
-        if (getApiToken() == null || getApiToken().isBlank()) {
-            throw new IllegalStateException("KMS API token is missing in configuration");
-        }
-        return new KmsClient(getUrl(), Optional.ofNullable(getApiToken()));
-    }
+
 
     @Bean
     public NativeMasterKeys masterKeysInfo() throws CloudproofException {

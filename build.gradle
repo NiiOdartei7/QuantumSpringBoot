@@ -46,7 +46,9 @@ dependencies {
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
     runtimeOnly 'com.h2database:h2'
     implementation 'org.springframework.boot:spring-boot-starter-jdbc'
-    implementation 'org.flywaydb:flyway-core'
+    // https://mvnrepository.com/artifact/org.flywaydb/flyway-core
+    // https://mvnrepository.com/artifact/org.flywaydb/flyway-database-postgresql
+    runtimeOnly 'org.flywaydb:flyway-database-postgresql:11.20.0'
     implementation 'io.jsonwebtoken:jjwt-api:0.13.0'
     implementation 'org.springframework.boot:spring-boot-starter-security'
     // https://mvnrepository.com/artifact/org.springframework.boot/spring-boot-starter-validation
@@ -56,6 +58,17 @@ dependencies {
     runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.13.0'
     // https://mvnrepository.com/artifact/org.springframework.boot/spring-boot-starter-webflux
     implementation 'org.springframework.boot:spring-boot-starter-webflux'// if using JSON
+    // https://mvnrepository.com/artifact/org.apache.pdfbox/pdfbox
+    implementation 'org.apache.pdfbox:pdfbox:3.0.6'
+    // https://mvnrepository.com/artifact/org.apache.pdfbox/pdfbox-tools
+    implementation 'org.apache.pdfbox:pdfbox-tools:3.0.6'
+    // https://mvnrepository.com/artifact/com.amazonaws/aws-java-sdk
+    implementation 'com.amazonaws:aws-java-sdk:1.12.797'
+
+    // https://mvnrepository.com/artifact/software.amazon.awssdk/s3
+    implementation 'software.amazon.awssdk:s3:2.41.0'
+    implementation 'org.postgresql:postgresql'
+    implementation 'org.flywaydb:flyway-core:11.20.0'
 
 
 }

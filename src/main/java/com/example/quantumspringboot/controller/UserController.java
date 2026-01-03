@@ -22,12 +22,19 @@ public class UserController {
         return ResponseEntity.ok(service.findUserByEmail(email));
     }
 
+    @PostMapping("/v1/user")
+    public ResponseEntity<UserResponseDTO> registerUser(@Valid
+                                                    @RequestBody String email
+    ){
+        return ResponseEntity.ok(service.findUserByEmail(email));
+    }
+
     @PatchMapping("/v1/user")
     public ResponseEntity<UserResponseDTO> updateUser(@Valid
                                                     @RequestBody UpdateUserDTO userRequestDTO
                                                       ){
         return ResponseEntity.ok(service.updateUser(userRequestDTO.getEmail(), userRequestDTO.getDeptName(),
-                userRequestDTO.getLevel() ));
+                userRequestDTO.getLevel(), userRequestDTO.getRole() ));
     }
 
 }

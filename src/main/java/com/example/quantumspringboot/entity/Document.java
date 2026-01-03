@@ -1,11 +1,14 @@
 package com.example.quantumspringboot.entity;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 @Entity
@@ -20,7 +23,7 @@ public class Document {
 
     @ManyToOne
     @JoinColumn(name = "user_id")
-    @JsonBackReference// foreign key in Document table
+    @JsonBackReference
     private User user;
 
     @Column
@@ -31,6 +34,15 @@ public class Document {
 
     @Column
     private String filename;
+
+    @ManyToMany
+    @JoinTable(
+            name = "Document_Department",
+            joinColumns = @JoinColumn(name = "document_id"),
+            inverseJoinColumns = @JoinColumn(name = "department_id")
+    )
+    @JsonIgnore
+    private Set<Department> departments;
 
     public Document(User user, String url, String filename){
         this.user = user;

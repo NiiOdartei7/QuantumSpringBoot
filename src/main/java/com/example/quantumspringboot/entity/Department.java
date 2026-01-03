@@ -5,6 +5,8 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 @Entity
@@ -15,6 +17,17 @@ public class Department {
 
     @Column
     private String name;
+
+    @ManyToMany
+            (mappedBy = "departments",
+                    cascade = {
+                            CascadeType.PERSIST,
+                            CascadeType.MERGE
+                    },
+                    fetch = FetchType.EAGER
+
+            )
+    private Set<Document> documentList;
 
     @Id
     @GeneratedValue(strategy =  GenerationType.UUID)

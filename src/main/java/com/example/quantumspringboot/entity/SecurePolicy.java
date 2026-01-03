@@ -20,8 +20,8 @@ public class SecurePolicy {
                         ),
                         new PolicyAxis("Clearance",
                                 new PolicyAxisAttribute[]{
-                                        new PolicyAxisAttribute("HIGH", true),
-                                        new PolicyAxisAttribute("LOW", true)},
+                                        new PolicyAxisAttribute("LOW", true),
+                                        new PolicyAxisAttribute("HIGH", true)},
                                 true
                         ),
 

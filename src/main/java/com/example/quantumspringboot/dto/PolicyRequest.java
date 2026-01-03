@@ -4,9 +4,12 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.List;
+
+@Data
 @AllArgsConstructor
 @NoArgsConstructor
-@Data
-public class DepartmentRequestDTO {
-    private String name;
+public class PolicyRequest {
+    private List<String> departments;
+    private String clearance;
 }

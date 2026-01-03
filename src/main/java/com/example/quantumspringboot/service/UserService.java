@@ -5,6 +5,7 @@ import com.example.quantumspringboot.dto.UserRequestDTO;
 import com.example.quantumspringboot.dto.UserResponseDTO;
 import com.example.quantumspringboot.entity.Clearance;
 import com.example.quantumspringboot.entity.Department;
+import com.example.quantumspringboot.entity.Role;
 import com.example.quantumspringboot.entity.User;
 import com.example.quantumspringboot.exceptions.EntityAlreadyExistsException;
 import com.example.quantumspringboot.exceptions.EntityDoesNotExistException;
@@ -59,8 +60,9 @@ public class UserService {
 
     }
 
-    public UserResponseDTO updateUser(String email, String deptName, String level){
+    public UserResponseDTO updateUser(String email, String deptName, String level, String sentRole){
         Clearance clearance;
+        Role role;
         if(level.equals((Clearance.HIGH).toString())){
             clearance = Clearance.HIGH;
 
@@ -68,18 +70,33 @@ public class UserService {
         else{
             clearance = Clearance.LOW;
         }
-        DepartmentDTO department = departmentService.findDepartment(deptName);
-        UserResponseDTO userResponseDTO = findUserByEmail(email);
-        Department department1 = departmentRepository.findDepartmentByName(deptName);
-        User foundUser = userRepository.findUserByEmail(email);
-//        Department conDept = objectMapper.convertValue(department, Department.class);
-        foundUser.setDepartment(department1);
-        foundUser.setClearance(clearance);
-        foundUser.definePolicy();
-        UUID id =foundUser.getId();
-        userRepository.save(foundUser);
+        if(sentRole.equals((Role.ADMIN).toString())){
+            role = Role.ADMIN;
 
-        return new UserResponseDTO(id,email, foundUser.getUserAccessPolicy());
+        }
+        else{
+            role = Role.USER;
+        }
+
+        if(!departmentRepository.existsDepartmentByNameIgnoreCase(deptName)){
+            throw new EntityDoesNotExistException("Department does not exist");
+        }
+        Department department1 = departmentRepository.findDepartmentByName(deptName);
+        if(userRepository.existsUserByEmail(email)){
+            User foundUser = userRepository.findByEmail(email);
+            foundUser.setDepartment(department1);
+            foundUser.setClearance(clearance);
+            foundUser.definePolicy();
+            foundUser.setRole(role);
+            UUID id =foundUser.getId();
+            userRepository.save(foundUser);
+
+            return new UserResponseDTO(id,email, foundUser.getUserAccessPolicy());
+
+        }
+        else throw new EntityDoesNotExistException("User does not exist");
+
+
 
     }
 
