@@ -83,7 +83,7 @@ public class UserService {
         }
         Department department1 = departmentRepository.findDepartmentByName(deptName);
         if(userRepository.existsUserByEmail(email)){
-            User foundUser = userRepository.findByEmail(email);
+            User foundUser = userRepository.findUserByEmail(email);
             foundUser.setDepartment(department1);
             foundUser.setClearance(clearance);
             foundUser.definePolicy();
